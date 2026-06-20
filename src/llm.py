@@ -34,6 +34,7 @@ def complete(
     tools: list[dict[str, Any]] | None = None,
     temperature: float = 0.0,
     model: str | None = None,
+    json_mode: bool = False,
 ):
     """Run a chat completion and return the assistant message.
 
@@ -48,6 +49,8 @@ def complete(
     if tools:
         kwargs["tools"] = tools
         kwargs["tool_choice"] = "auto"
+    if json_mode:
+        kwargs["response_format"] = {"type": "json_object"}
 
     response = _client().chat.completions.create(**kwargs)
     return response.choices[0].message

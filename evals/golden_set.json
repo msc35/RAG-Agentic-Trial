@@ -1,0 +1,107 @@
+[
+  {
+    "id": "q01",
+    "question": "What does MentorNet learn, and how does it interact with StudentNet during training?",
+    "reference_answer": "MentorNet learns a data-driven curriculum by computing time-varying sample weights. It supervises a StudentNet by assigning higher weights to training samples that are likely to have correct labels, thereby guiding StudentNet to focus on cleaner samples. The two networks interact in a cooperative loop: StudentNet's loss values feed back into MentorNet, which updates its weighting function to adapt the curriculum dynamically throughout training.",
+    "expected_sources": ["MentorNet Learning Data-Driven Curriculum.pdf"],
+    "answerable": true
+  },
+  {
+    "id": "q02",
+    "question": "What is the main theoretical advantage of random shuffling over with-replacement sampling in SGD, according to the paper on SGD with random shuffling?",
+    "reference_answer": "Random shuffling (sampling without replacement) achieves a faster convergence rate than with-replacement sampling. For strongly convex objectives, shuffled SGD converges at O(1/nk^2) whereas with-replacement SGD converges at O(1/k), where n is the number of data points and k is the number of epochs. This theoretical improvement confirms the empirical observation that practitioners prefer shuffled data.",
+    "expected_sources": ["How Good is SGD with Random Shuffling.pdf"],
+    "answerable": true
+  },
+  {
+    "id": "q03",
+    "question": "How does the SEVER algorithm identify and remove corrupted gradients to achieve robust optimization?",
+    "reference_answer": "SEVER uses a spectral approach: it computes gradients on all data points, then performs a singular value decomposition (SVD) on the gradient matrix. Corrupted gradients tend to have large projections onto the top singular vector. SEVER filters out the points whose gradients have large projections (above a threshold), effectively removing outlier gradients, and then runs standard SGD on the remaining clean subset.",
+    "expected_sources": ["Sever A Robust Meta-Algorithm for Stochastic Optimization.pdf"],
+    "answerable": true
+  },
+  {
+    "id": "q04",
+    "question": "Under what conditions does local SGD outperform minibatch SGD?",
+    "reference_answer": "Local SGD outperforms minibatch SGD when the number of local update steps K is large relative to the communication rounds. Specifically, when data across workers is homogeneous (i.i.d.) and K is large, local SGD reduces communication overhead without sacrificing convergence. When K is small or data is heterogeneous across workers, minibatch SGD can perform comparably or better because the averaging step in local SGD introduces bias from model drift.",
+    "expected_sources": ["Is Local SGD Better than Minibatch SGD.pdf"],
+    "answerable": true
+  },
+  {
+    "id": "q05",
+    "question": "What is the alignment property of SGD noise and why is it significant?",
+    "reference_answer": "The alignment property states that the noise in SGD gradients is not isotropic but is aligned with the gradient of the loss landscape — specifically, it is larger in directions of larger curvature and smaller in flat directions. This is significant because it means SGD noise implicitly acts as a regularizer that biases the optimizer toward flat minima, which tend to generalize better. It explains why SGD finds more generalizable solutions than full-batch gradient descent even without explicit regularization.",
+    "expected_sources": ["The alignment property of SGD noise and how it helps.pdf"],
+    "answerable": true
+  },
+  {
+    "id": "q06",
+    "question": "How does the 'Choosing the Sample with Lowest Loss' method make SGD robust to label noise?",
+    "reference_answer": "The method selects a subset of training samples with the smallest loss values at each iteration, on the premise that samples with label noise tend to have higher loss. By training only on low-loss samples, the model avoids fitting to corrupted labels. The paper shows this selection rule makes SGD robust to a fraction of arbitrarily corrupted labels while preserving convergence guarantees on clean data.",
+    "expected_sources": ["Choosing the Sample with Lowest Loss makes SGD Robust.pdf"],
+    "answerable": true
+  },
+  {
+    "id": "q07",
+    "question": "What is importance sampling in the context of stochastic optimization and how does it reduce gradient variance?",
+    "reference_answer": "Importance sampling reweights the probability of selecting each training sample so that samples contributing more to the gradient (those with higher loss or gradient norm) are sampled more frequently. Each selected sample is then down-weighted by its sampling probability to keep the estimator unbiased. This reduces variance because the dominant, high-variance terms are sampled more often and their contribution is corrected, rather than appearing rarely and causing large random fluctuations.",
+    "expected_sources": ["Stochastic Optimization with Importance Sampling for Regularized Loss.pdf"],
+    "answerable": true
+  },
+  {
+    "id": "q08",
+    "question": "What does the paper on deep learning robustness to massive label noise find about memorization and generalization?",
+    "reference_answer": "The paper finds that deep networks are surprisingly robust to massive label noise — even when a large fraction of labels are randomly corrupted, networks can still learn useful representations and generalize to the clean test set. The key finding is that networks tend to learn the true pattern first before memorizing the noisy labels, so early stopping or appropriate regularization can prevent overfitting to the noise.",
+    "expected_sources": ["Deep Learning is Robust to Massive Label Noise.pdf"],
+    "answerable": true
+  },
+  {
+    "id": "q09",
+    "question": "What convergence guarantee does the last-iterate of SGD achieve, and why is this better than the averaged iterate?",
+    "reference_answer": "The paper proves that the last iterate of SGD is theoretically optimal, achieving the same asymptotic convergence rate as the averaged (Polyak-Ruppert) iterate for strongly convex objectives. This is significant because practitioners typically use the last iterate (it requires no additional storage or computation) but theoretical guarantees had previously only been established for the averaged iterate. The result closes this gap between theory and practice.",
+    "expected_sources": ["Last itarete theoretically optimal.pdf"],
+    "answerable": true
+  },
+  {
+    "id": "q10",
+    "question": "How does distributed importance sampling differ from centralized importance sampling in terms of variance reduction?",
+    "reference_answer": "In distributed importance sampling, each worker computes sampling probabilities locally based on its own data partition rather than having a central node compute them over the full dataset. This reduces communication cost but introduces additional variance because local importance weights are only approximations of the global ones. The paper analyzes this trade-off and shows conditions under which distributed importance sampling still achieves meaningful variance reduction despite the approximation error.",
+    "expected_sources": ["VARIANCE REDUCTION IN SGD BY DISTRIBUTED IMPORTANCE SAMPLING.pdf"],
+    "answerable": true
+  },
+  {
+    "id": "q11",
+    "question": "What learning rate schedule does GPT-3 use during pretraining?",
+    "reference_answer": "The provided documents do not contain information about GPT-3 or its training setup.",
+    "expected_sources": [],
+    "answerable": false
+  },
+  {
+    "id": "q12",
+    "question": "How does the Adam optimizer's memory usage compare to vanilla SGD?",
+    "reference_answer": "The provided documents focus on SGD variants and do not discuss the Adam optimizer's memory characteristics.",
+    "expected_sources": [],
+    "answerable": false
+  },
+  {
+    "id": "q13",
+    "question": "What is the VC dimension of a two-layer ReLU neural network?",
+    "reference_answer": "The provided documents do not discuss VC dimension or PAC learning bounds for neural networks.",
+    "expected_sources": [],
+    "answerable": false
+  },
+  {
+    "id": "q14",
+    "question": "How does dropout regularization prevent overfitting?",
+    "reference_answer": "The provided documents do not contain material specifically explaining the dropout regularization technique.",
+    "expected_sources": [],
+    "answerable": false
+  },
+  {
+    "id": "q15",
+    "question": "What is the difference between batch normalization and layer normalization?",
+    "reference_answer": "The provided documents do not discuss normalization techniques such as batch normalization or layer normalization.",
+    "expected_sources": [],
+    "answerable": false
+  }
+]

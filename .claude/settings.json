@@ -14,7 +14,8 @@
       "Bash(curl -s http://localhost:8000/health)",
       "Bash(python3.11 -m json.tool)",
       "Bash(curl -s http://localhost:8000/docs)",
-      "Bash(kill 53636)"
+      "Bash(kill 53636)",
+      "Bash(TRANSFORMERS_NO_TF=1 USE_TF=0 python3.11 -m evals.run_eval)"
     ]
   }
 }
