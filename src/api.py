@@ -28,6 +28,7 @@ from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
 from fastapi import Depends, FastAPI, File, HTTPException, Query, Request, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
@@ -69,6 +70,15 @@ app = FastAPI(
     description="Answers questions about ingested technical PDFs.",
     version="0.1.0",
     lifespan=lifespan,
+)
+
+# CORS — allow the Vite dev server and any production frontend origin.
+# In production, replace "*" with your actual frontend domain.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://localhost:4173"],
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
@@ -177,15 +187,13 @@ async def ask(
     Use `?stream=true` for token-by-token SSE streaming (bypasses the agent
     loop and uses the direct generate path).
     """
+    tid = _tid  # captured before any branch so both paths can use it
+
     if stream:
         return await _ask_streaming(request.question, tid)
 
     agent = _get_agent()
     start = time.perf_counter()
-
-    # run_in_executor does NOT copy ContextVars to the thread (confirmed empirically).
-    # Capture the trace_id and re-set it as the first thing inside the thread.
-    tid = _tid
 
     def _run_agent() -> AgentResult:
         set_trace_id(tid)

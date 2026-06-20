@@ -22,7 +22,20 @@
       "Bash(curl -v -X POST http://localhost:8000/ask -H 'Content-Type: application/json' -d '{\"question\": \"What is SEVER?\"}')",
       "Bash(kill 55220)",
       "Bash(kill 55476)",
-      "Bash(TRANSFORMERS_NO_TF=1 USE_TF=0 python3.11 -m pytest -v)"
+      "Bash(TRANSFORMERS_NO_TF=1 USE_TF=0 python3.11 -m pytest -v)",
+      "Bash(npm --version)",
+      "Bash(npm install *)",
+      "Bash(npm run *)",
+      "Bash(echo \"API PID: $!\")",
+      "Bash(echo \"Vite PID: $!\")",
+      "Bash(curl -s -X POST http://localhost:5173/ask -H 'Content-Type: application/json' -d '{\"question\": \"What is SEVER?\"}')",
+      "Bash(curl -s http://localhost:5173/)",
+      "Bash(npx --yes playwright --version)",
+      "Bash(npx playwright *)",
+      "Bash(node verify_rag.js)",
+      "Bash(curl -s -N -X POST http://localhost:5173/ask?stream=true -H 'Content-Type: application/json' -d '{\"question\": \"What is SEVER?\"}' --max-time 60)",
+      "Bash(curl -s -N -X POST http://localhost:8000/ask?stream=true -H 'Content-Type: application/json' -d '{\"question\": \"What is SEVER?\"}' --max-time 60)",
+      "Bash(kill 56675)"
     ],
     "additionalDirectories": [
       "/tmp"

@@ -2,7 +2,7 @@
 # Override the interpreter if needed:  make ingest PYTHON=python3.11
 PYTHON ?= python3
 
-.PHONY: help install ingest api eval test clean
+.PHONY: help install ingest api eval test clean frontend
 
 help:
 	@echo "Targets:"
@@ -31,6 +31,9 @@ eval:
 
 test:
 	$(PYTHON) -m pytest -q
+
+frontend:
+	cd frontend && npm install && npm run dev
 
 clean:
 	rm -rf data/store/* && touch data/store/.gitkeep
