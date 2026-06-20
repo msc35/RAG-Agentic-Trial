@@ -53,6 +53,27 @@ def complete(
     return response.choices[0].message
 
 
+def stream_complete(
+    messages: list[dict[str, Any]],
+    model: str | None = None,
+):
+    """Stream chat completion tokens as a generator of string chunks.
+
+    Yields each delta string as it arrives so callers can forward tokens
+    to the client without buffering the whole response.
+    """
+    stream = _client().chat.completions.create(
+        model=model or settings.llm_model,
+        messages=messages,
+        temperature=0.0,
+        stream=True,
+    )
+    for chunk in stream:
+        delta = chunk.choices[0].delta
+        if delta.content:
+            yield delta.content
+
+
 def embed(texts: list[str], model: str | None = None) -> list[list[float]]:
     """Embed a list of strings, returning one vector per input.
 

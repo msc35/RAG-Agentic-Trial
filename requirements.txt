@@ -12,6 +12,7 @@ sentence-transformers>=3.0 # cross-encoder reranker + optional local embeddings
 # Service (Phase 5)
 fastapi>=0.111
 uvicorn[standard]>=0.30
+python-multipart>=0.0.9   # required by FastAPI for file upload endpoints
 
 # Observability (Phase 7)
 structlog>=24.1
