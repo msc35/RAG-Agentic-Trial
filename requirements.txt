@@ -1,0 +1,20 @@
+# Core RAG stack — pinned to recent, compatible majors.
+openai>=1.40,<2.0          # LLM + embeddings client
+chromadb>=0.5,<0.6         # local persistent vector store
+pypdf>=4.2                 # PDF text + page extraction
+tiktoken>=0.7             # token-accurate chunking
+python-dotenv>=1.0        # load .env into the environment
+
+# Retrieval (used from Phase 2 on — installed now so the env is stable)
+rank-bm25>=0.2.2          # keyword search for hybrid retrieval
+sentence-transformers>=3.0 # cross-encoder reranker + optional local embeddings
+
+# Service (Phase 5)
+fastapi>=0.111
+uvicorn[standard]>=0.30
+
+# Observability (Phase 7)
+structlog>=24.1
+
+# Tests (Phase 8)
+pytest>=8.0

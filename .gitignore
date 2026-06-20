@@ -1,0 +1,23 @@
+# Secrets — never commit the real .env
+.env
+
+# Persisted vector DB (rebuildable from data/pdfs) — keep the folder, ignore its contents
+data/store/*
+!data/store/.gitkeep
+
+# Don't commit the actual PDFs, but keep the folder
+data/pdfs/*
+!data/pdfs/.gitkeep
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
