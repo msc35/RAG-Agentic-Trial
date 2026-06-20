@@ -15,7 +15,16 @@
       "Bash(python3.11 -m json.tool)",
       "Bash(curl -s http://localhost:8000/docs)",
       "Bash(kill 53636)",
-      "Bash(TRANSFORMERS_NO_TF=1 USE_TF=0 python3.11 -m evals.run_eval)"
+      "Bash(TRANSFORMERS_NO_TF=1 USE_TF=0 python3.11 -m evals.run_eval)",
+      "Bash(TRANSFORMERS_NO_TF=1 USE_TF=0 python3.11 -m uvicorn src.api:app --port 8000 > /tmp/api_phase7.log 2>&1 & *)",
+      "Bash(curl -s -X POST http://localhost:8000/ask -H 'Content-Type: application/json' -d '{\"question\": \"What is the key idea behind SEVER?\"}' -D -)",
+      "Bash(curl -sI -X POST http://localhost:8000/ask -H 'Content-Type: application/json' -d '{\"question\": \"What is SEVER?\"}')",
+      "Bash(curl -v -X POST http://localhost:8000/ask -H 'Content-Type: application/json' -d '{\"question\": \"What is SEVER?\"}')",
+      "Bash(kill 55220)",
+      "Bash(kill 55476)"
+    ],
+    "additionalDirectories": [
+      "/tmp"
     ]
   }
 }

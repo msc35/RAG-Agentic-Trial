@@ -27,7 +27,7 @@ import time
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
-from fastapi import FastAPI, File, HTTPException, Query, UploadFile
+from fastapi import Depends, FastAPI, File, HTTPException, Query, Request, UploadFile
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
@@ -35,7 +35,10 @@ from .agent import Agent, AgentResult
 from .generate import generate
 from .ingest import ingest
 from .llm import stream_complete
+from .logging_conf import configure_logging, get_logger, new_trace_id, set_trace_id
 from .retriever import Retriever
+
+_log = get_logger("api")
 
 # --------------------------------------------------------------------------- #
 # App state — initialised once in lifespan, reused across all requests
@@ -48,14 +51,15 @@ _agent: Agent | None = None
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Build the BM25 index and open the Chroma connection at startup."""
+    configure_logging()
     global _retriever, _agent
-    print("Starting up: loading retriever...")
+    _log.info("startup_begin")
     loop = asyncio.get_event_loop()
     # Run in executor: Retriever.__init__ is synchronous and does real work
     # (loads all corpus into RAM for BM25).
     _retriever = await loop.run_in_executor(None, Retriever)
     _agent = Agent(_retriever)
-    print(f"Ready. Corpus: {len(_retriever._corpus)} chunks.")
+    _log.info("startup_done", chunks=len(_retriever._corpus))
     yield
     # Nothing to clean up — Chroma persists to disk automatically.
 
@@ -66,6 +70,45 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+
+
+@app.middleware("http")
+async def trace_middleware(request: Request, call_next):
+    """Generate a trace_id per request, log boundaries, return it as a header.
+
+    The ID is stored on request.state so the _require_trace dependency can
+    inject it into each handler's own contextvars context. We do NOT call
+    set_trace_id() here because Starlette's call_next() runs handlers in a
+    separate async task — any ContextVar set in this coroutine won't be
+    visible there.
+    """
+    tid = new_trace_id()
+    request.state.trace_id = tid
+    t0 = time.perf_counter()
+    _log.info("request_start", method=request.method, path=request.url.path, trace_id=tid)
+    response = await call_next(request)
+    latency_ms = round((time.perf_counter() - t0) * 1000, 1)
+    _log.info(
+        "request_end",
+        method=request.method,
+        path=request.url.path,
+        status=response.status_code,
+        latency_ms=latency_ms,
+        trace_id=tid,
+    )
+    response.headers["X-Trace-Id"] = tid
+    return response
+
+
+async def _require_trace(request: Request) -> str:
+    """FastAPI dependency: sets the trace_id in the handler's own context.
+
+    run_in_executor copies THIS context to worker threads, so every log line
+    inside retrieval/LLM/agent calls picks up the correct trace_id.
+    """
+    tid = getattr(request.state, "trace_id", None) or new_trace_id()
+    set_trace_id(tid)
+    return tid
 
 
 def _get_agent() -> Agent:
@@ -116,7 +159,7 @@ class HealthResponse(BaseModel):
 # --------------------------------------------------------------------------- #
 
 @app.get("/health", response_model=HealthResponse, tags=["ops"])
-async def health():
+async def health(_tid: str = Depends(_require_trace)):
     """Readiness check — confirms the vector store and BM25 index are loaded."""
     r = _get_retriever()
     return HealthResponse(status="ok", chunks_in_store=len(r._corpus))
@@ -126,6 +169,7 @@ async def health():
 async def ask(
     request: AskRequest,
     stream: bool = Query(default=False, description="Stream tokens via SSE instead of returning a complete response."),
+    _tid: str = Depends(_require_trace),
 ):
     """Answer a question using the agentic RAG pipeline.
 
@@ -134,14 +178,22 @@ async def ask(
     loop and uses the direct generate path).
     """
     if stream:
-        return await _ask_streaming(request.question)
+        return await _ask_streaming(request.question, tid)
 
     agent = _get_agent()
     start = time.perf_counter()
 
+    # run_in_executor does NOT copy ContextVars to the thread (confirmed empirically).
+    # Capture the trace_id and re-set it as the first thing inside the thread.
+    tid = _tid
+
+    def _run_agent() -> AgentResult:
+        set_trace_id(tid)
+        return agent.run(request.question)
+
     try:
         loop = asyncio.get_event_loop()
-        result: AgentResult = await loop.run_in_executor(None, agent.run, request.question)
+        result: AgentResult = await loop.run_in_executor(None, _run_agent)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Agent error: {exc}") from exc
 
@@ -155,22 +207,18 @@ async def ask(
     )
 
 
-async def _ask_streaming(question: str) -> StreamingResponse:
-    """Stream the answer token by token via Server-Sent Events.
-
-    Uses the direct generate path (retrieve → stream LLM response) rather
-    than the agent loop, because interleaving tool calls with streaming adds
-    significant complexity for modest benefit.
-    """
+async def _ask_streaming(question: str, tid: str) -> StreamingResponse:
+    """Stream the answer token by token via Server-Sent Events."""
     retriever = _get_retriever()
 
     async def event_stream() -> AsyncGenerator[str, None]:
         loop = asyncio.get_event_loop()
 
-        # Retrieval is synchronous — run in executor.
-        chunks = await loop.run_in_executor(
-            None, lambda: retriever.retrieve(question, top_k=5)
-        )
+        def _retrieve():
+            set_trace_id(tid)
+            return retriever.retrieve(question, top_k=5)
+
+        chunks = await loop.run_in_executor(None, _retrieve)
 
         if not chunks:
             yield "data: I don't have enough information in the provided documents to answer this question.\n\n"
@@ -211,6 +259,7 @@ async def _ask_streaming(question: str) -> StreamingResponse:
 async def ingest_endpoint(
     file: UploadFile | None = File(default=None, description="Optional PDF to upload before re-ingesting."),
     rebuild: bool = Query(default=False, description="Wipe the collection and rebuild from scratch."),
+    _tid: str = Depends(_require_trace),
 ):
     """Re-ingest PDFs from data/pdfs/ into the vector store.
 
@@ -228,13 +277,19 @@ async def ingest_endpoint(
 
     try:
         loop = asyncio.get_event_loop()
-        chunks_written = await loop.run_in_executor(None, lambda: ingest(rebuild=rebuild))
+        def _ingest():
+            set_trace_id(_tid)
+            return ingest(rebuild=rebuild)
+        chunks_written = await loop.run_in_executor(None, _ingest)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Ingest error: {exc}") from exc
 
     # Reload the retriever so the new chunks are searchable immediately.
     global _retriever, _agent
-    _retriever = await loop.run_in_executor(None, Retriever)
+    def _reload():
+        set_trace_id(_tid)
+        return Retriever()
+    _retriever = await loop.run_in_executor(None, _reload)
     _agent = Agent(_retriever)
 
     action = "Rebuilt" if rebuild else "Updated"

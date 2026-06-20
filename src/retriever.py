@@ -23,6 +23,7 @@ Why each step:
 
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass
 from functools import cached_property
 from typing import Any
@@ -32,6 +33,9 @@ from rank_bm25 import BM25Okapi
 
 from .config import settings
 from .llm import embed
+from .logging_conf import get_logger
+
+_log = get_logger("retriever")
 
 
 @dataclass
@@ -224,7 +228,22 @@ class Retriever:
         if self._collection.count() == 0:
             return []
 
+        t0 = time.perf_counter()
         vector_hits = self._vector_search(query, k=self.CANDIDATES)
         bm25_hits = self._bm25_search(query, k=self.CANDIDATES)
         candidates = self._rrf_merge(vector_hits, bm25_hits)
-        return self._rerank(query, candidates, top_k=top_k)
+        results = self._rerank(query, candidates, top_k=top_k)
+        latency_ms = (time.perf_counter() - t0) * 1000
+
+        _log.info(
+            "retrieval",
+            query=query[:120],
+            n_vector=len(vector_hits),
+            n_bm25=len(bm25_hits),
+            n_candidates=len(candidates),
+            n_returned=len(results),
+            top_sources=[f"{c.source}:p{c.page}" for c in results[:3]],
+            top_scores=[round(c.score, 3) for c in results[:3]],
+            latency_ms=round(latency_ms, 1),
+        )
+        return results

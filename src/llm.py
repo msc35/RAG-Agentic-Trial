@@ -7,12 +7,16 @@ Swapping to Claude, adding a fallback, or changing models is a change here only.
 
 from __future__ import annotations
 
+import time
 from functools import lru_cache
 from typing import Any
 
 from openai import OpenAI
 
 from .config import settings
+from .logging_conf import get_logger
+
+_log = get_logger("llm")
 
 
 @lru_cache(maxsize=1)
@@ -52,7 +56,19 @@ def complete(
     if json_mode:
         kwargs["response_format"] = {"type": "json_object"}
 
+    t0 = time.perf_counter()
     response = _client().chat.completions.create(**kwargs)
+    latency_ms = (time.perf_counter() - t0) * 1000
+
+    usage = response.usage
+    _log.info(
+        "llm_complete",
+        model=kwargs["model"],
+        latency_ms=round(latency_ms, 1),
+        prompt_tokens=usage.prompt_tokens if usage else None,
+        completion_tokens=usage.completion_tokens if usage else None,
+        has_tool_calls=bool(response.choices[0].message.tool_calls),
+    )
     return response.choices[0].message
 
 
@@ -88,8 +104,16 @@ def embed(texts: list[str], model: str | None = None) -> list[list[float]]:
     model = model or settings.embed_model
     vectors: list[list[float]] = []
     batch_size = 100  # comfortably under the API's per-request input cap
+    t0 = time.perf_counter()
     for start in range(0, len(texts), batch_size):
         batch = texts[start : start + batch_size]
         response = _client().embeddings.create(model=model, input=batch)
         vectors.extend(item.embedding for item in response.data)
+    latency_ms = (time.perf_counter() - t0) * 1000
+    _log.info(
+        "llm_embed",
+        model=model,
+        n_texts=len(texts),
+        latency_ms=round(latency_ms, 1),
+    )
     return vectors

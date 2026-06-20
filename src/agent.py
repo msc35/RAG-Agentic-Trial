@@ -26,12 +26,16 @@ Tools exposed to the agent:
 from __future__ import annotations
 
 import json
+import time
 from dataclasses import dataclass, field
 from typing import Any
 
 from .generate import GenerationResult, _build_context_block, _extract_sources
 from .llm import complete
+from .logging_conf import get_logger
 from .retriever import RetrievedChunk, Retriever
+
+_log = get_logger("agent")
 
 MAX_ITERATIONS = 5
 
@@ -145,19 +149,29 @@ class Agent:
 
     def _dispatch_tool(self, name: str, arguments: dict[str, Any]) -> str:
         """Route a tool call to its implementation. Returns a string result."""
+        t0 = time.perf_counter()
         try:
             if name == "search_docs":
-                return self._search_docs(
+                result = self._search_docs(
                     query=arguments["query"],
                     top_k=arguments.get("top_k", 5),
                 )
-            if name == "list_documents":
-                return self._list_documents()
-            return f"Unknown tool: {name}"
+            elif name == "list_documents":
+                result = self._list_documents()
+            else:
+                result = f"Unknown tool: {name}"
         except Exception as exc:
-            # Return the error as a string so the agent can react to it
-            # rather than the whole loop crashing.
-            return f"Tool error in {name}: {exc}"
+            result = f"Tool error in {name}: {exc}"
+            _log.warning("tool_error", tool=name, args=arguments, error=str(exc))
+
+        _log.info(
+            "tool_call",
+            tool=name,
+            args={k: str(v)[:80] for k, v in arguments.items()},
+            result_len=len(result),
+            latency_ms=round((time.perf_counter() - t0) * 1000, 1),
+        )
+        return result
 
     # ------------------------------------------------------------------ #
     # Main loop
@@ -167,6 +181,9 @@ class Agent:
         """Run the agent loop for a single user question."""
         self._retrieved = []  # reset per question
         tool_calls_log: list[str] = []
+        t_start = time.perf_counter()
+
+        _log.info("agent_start", question=question[:120])
 
         messages: list[dict[str, Any]] = [
             {"role": "system", "content": _SYSTEM_PROMPT},
@@ -189,7 +206,6 @@ class Agent:
                         fn_args = {}
 
                     tool_calls_log.append(f"{fn_name}({fn_args})")
-                    print(f"  [agent] tool call → {fn_name}({fn_args})")
 
                     result_text = self._dispatch_tool(fn_name, fn_args)
 
@@ -209,6 +225,13 @@ class Agent:
                 answer = "I don't have enough information in the provided documents to answer this question."
 
             sources = _extract_sources(self._retrieved)
+            _log.info(
+                "agent_done",
+                iterations=iteration,
+                tool_calls=tool_calls_log,
+                n_sources=len(sources),
+                latency_ms=round((time.perf_counter() - t_start) * 1000, 1),
+            )
             return AgentResult(
                 answer=answer,
                 sources=sources,
