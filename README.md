@@ -48,7 +48,7 @@ Ingest (ingest.py)
 - [x] Phase 6 — Evaluation harness (LLM-as-judge + retrieval hit rate)
 - [x] Phase 7 — Structured logging + per-request tracing
 - [x] Phase 8 — Tests, Dockerfile, docs
-- [ ] Phase 9 — Frontend (optional)
+- [x] Phase 9 — Frontend 
 
 ## Setup
 
