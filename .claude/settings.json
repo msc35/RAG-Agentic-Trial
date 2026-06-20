@@ -21,7 +21,8 @@
       "Bash(curl -sI -X POST http://localhost:8000/ask -H 'Content-Type: application/json' -d '{\"question\": \"What is SEVER?\"}')",
       "Bash(curl -v -X POST http://localhost:8000/ask -H 'Content-Type: application/json' -d '{\"question\": \"What is SEVER?\"}')",
       "Bash(kill 55220)",
-      "Bash(kill 55476)"
+      "Bash(kill 55476)",
+      "Bash(TRANSFORMERS_NO_TF=1 USE_TF=0 python3.11 -m pytest -v)"
     ],
     "additionalDirectories": [
       "/tmp"
